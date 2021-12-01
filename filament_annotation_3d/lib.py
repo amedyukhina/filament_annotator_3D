@@ -207,6 +207,11 @@ def tetragon_intersection(p1: list, p2: list):
     list or None:
         List of (two) coordinate of the intersection line or None if no intersection exists.
     """
+    t = []
+    if len(p1[0]) > 3:
+        t = list(p1[0][:-3])
+        p1 = [coord[-3:] for coord in p1]
+        p2 = [coord[-3:] for coord in p2]
     p1 = list(set([Point(*coords) for coords in p1]))
     p2 = list(set([Point(*coords) for coords in p2]))
     if len(p1) > 2 and len(p2) > 2:
@@ -214,7 +219,7 @@ def tetragon_intersection(p1: list, p2: list):
         plane2 = ConvexPolygon(p2)
         inter = intersection(plane1, plane2)
         if inter is not None:
-            inter = [list(pt) for pt in inter]
+            inter = [t + list(pt) for pt in inter]
         return inter
     else:
         return None
@@ -297,7 +302,7 @@ def sort_points(points: list, n_neighbors: int = 10):
     return points[order]
 
 
-def annotation_to_pandas(data: list, columns: list = None) -> pd.DataFrame:
+def annotation_to_pandas(data: list) -> pd.DataFrame:
     """
     Convert list of path to a pandas table with coordinates.
 
@@ -305,11 +310,6 @@ def annotation_to_pandas(data: list, columns: list = None) -> pd.DataFrame:
     ----------
     data : list
         List of paths, each of which is a list of coordinates.
-    columns : list
-        List of column names.
-        Must be the same length as the number of coordinates.
-        If None, columns are set to ['z', 'y', 'x'] and only the last 3 coordinates are saved.
-        Default is None.
 
     Returns
     -------
@@ -317,9 +317,8 @@ def annotation_to_pandas(data: list, columns: list = None) -> pd.DataFrame:
         pandas DataFrame with coordinates
     """
     df = pd.DataFrame()
-    if columns is None:
-        columns = ['z', 'y', 'x']
-        data = data[:, -3:]
+    columns = ['t', 'z', 'y', 'x']
+    columns = columns[-data[0].shape[1]:]
     for i, d in enumerate(data):
         cur_df = pd.DataFrame(d, columns=columns)
         cur_df['id'] = i
