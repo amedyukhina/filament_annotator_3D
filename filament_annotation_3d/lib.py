@@ -297,7 +297,7 @@ def sort_points(points: list, n_neighbors: int = 10):
     return points[order]
 
 
-def annotation_to_pandas(data: list) -> pd.DataFrame:
+def annotation_to_pandas(data: list, columns: list = None) -> pd.DataFrame:
     """
     Convert list of path to a pandas table with coordinates.
 
@@ -305,6 +305,11 @@ def annotation_to_pandas(data: list) -> pd.DataFrame:
     ----------
     data : list
         List of paths, each of which is a list of coordinates.
+    columns : list
+        List of column names.
+        Must be the same length as the number of coordinates.
+        If None, columns are set to ['z', 'y', 'x'] and only the last 3 coordinates are saved.
+        Default is None.
 
     Returns
     -------
@@ -312,8 +317,11 @@ def annotation_to_pandas(data: list) -> pd.DataFrame:
         pandas DataFrame with coordinates
     """
     df = pd.DataFrame()
+    if columns is None:
+        columns = ['z', 'y', 'x']
+        data = data[:, -3:]
     for i, d in enumerate(data):
-        cur_df = pd.DataFrame(d, columns=['z', 'y', 'x'])
+        cur_df = pd.DataFrame(d, columns=columns)
         cur_df['id'] = i
         df = pd.concat([df, cur_df], ignore_index=True)
     return df
