@@ -2,7 +2,14 @@
 
 Annotation of filament structures in 3D based on napari viewer
 
-### Annotation instructions:
+## Installation
+
+- conda create -n myenv python=3.9.0
+- conda activate myenv
+- python setup.py install
+- pip install napari[all]
+
+## Annotation instructions:
 
 1. Rotate the image to find a position, where the filament is clearly visible
 2. Draw a line over the filament, by holding "Control" and dragging the mouse: this will draw a polygon with potential filament locations
