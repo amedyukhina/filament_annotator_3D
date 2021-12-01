@@ -9,7 +9,7 @@ from scipy import ndimage
 from sklearn.neighbors import NearestNeighbors
 
 
-def annotate_filaments(annotation_layer, output_fn):
+def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
     """
 
     Parameters
@@ -18,6 +18,10 @@ def annotate_filaments(annotation_layer, output_fn):
         napari shapes layer to add annotations
     output_fn : str
         csv file to save filament coordinates
+    maxpoints : int, optional
+        Maximum points in the annotated filament.
+        Used for regularization.
+        Default: 10
     Returns
     -------
 
@@ -64,7 +68,7 @@ def annotate_filaments(annotation_layer, output_fn):
                     npt2 = polygons[1][0]
                     fpt1 = polygons[0][1]
                     fpt2 = polygons[1][1]
-                    mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2)
+                    mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2, maxpoints=maxpoints)
                     mt = sort_points(mt)  # make sure the filament coordinates are sorted
 
                     # remove the 2 polygons from the shapes layer
@@ -226,7 +230,8 @@ def tetragon_intersection(p1: list, p2: list):
 
 
 def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
-                                 fpt1: np.ndarray, fpt2: np.ndarray):
+                                 fpt1: np.ndarray, fpt2: np.ndarray,
+                                 maxpoints=None):
     """
     Calculate intersection of two non-convex polygons represented by a list of near and far points.
 
@@ -240,6 +245,8 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         Far points of the first polygon.
     fpt2 : np.ndarray
         Far points of the second polygon.
+    maxpoints : int, optional
+        If provided, all point lists will be reduced to this number of points for regularization.
 
     Returns
     -------
@@ -248,6 +255,17 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         where n is the number of points, d is the number of dimensions.
     """
     mt = []
+    
+    if maxpoints is not None:
+        if len(npt1) > maxpoints:
+            ind = np.int_(np.linspace(0, len(npt1)-1, maxpoints, endpoint=False))
+            npt1 = np.array(npt1)[ind]
+            fpt1 = np.array(fpt1)[ind]
+        if len(npt2) > maxpoints:
+            ind = np.int_(np.linspace(0, len(npt2)-1, maxpoints, endpoint=False))
+            npt2 = np.array(npt2)[ind]
+            fpt2 = np.array(fpt2)[ind]
+    
     for i in range(len(npt1) - 1):
         for j in range(len(npt2) - 1):
             p1 = [npt1[i], npt1[i + 1], fpt1[i + 1], fpt1[i]]
