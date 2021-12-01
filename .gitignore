@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+filament_annotation_3d/
 lib64/
 parts/
 sdist/

@@ -5,7 +5,7 @@ setup(
     version='0.0',
     author="Anna Medyukhina",
     author_email='anna.medyukhina@gmail.com',
-    packages=['lib'
+    packages=['filament_annotation_3d'
               ],
     license='Apache License 2.0',
     include_package_data=True,
