@@ -6,6 +6,67 @@ import networkx as nx
 import itertools
 from Geometry3D import *
 
+
+def annotate_filaments(layer, output_fn):
+    near_points = []
+    far_points = []
+    polygons = []
+
+    @layer.mouse_drag_callbacks.append
+    def on_drag(layer, event):
+        yield
+        while event.type == 'mouse_move':
+            near_point, far_point = layer.get_ray_intersections(
+                event.position,
+                event.view_direction,
+                event.dims_displayed
+            )
+            if 'Control' in event.modifiers:
+                if (near_point is not None) and (far_point is not None):
+                    near_points.append(near_point)
+                    far_points.append(far_point)
+
+                if len(near_points) > 3:
+                    layer = draw_polygon(layer, near_points, far_points)
+
+            else:
+                if len(near_points) > 0:
+                    polygons.append([near_points.copy(), far_points.copy()])
+                near_points.clear()
+                far_points.clear()
+                if len(polygons) >= 2:
+                    npt1 = polygons[0][0]
+                    npt2 = polygons[1][0]
+                    fpt1 = polygons[0][1]
+                    fpt2 = polygons[1][1]
+                    mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2)
+                    mt = sort_points(mt)
+                    layer.selected_data = set(range(layer.nshapes - 2, layer.nshapes))
+                    layer.remove_selected()
+                    layer.add(mt, shape_type='path', edge_color='green', edge_width=1)
+                    polygons[0] = None
+                    polygons[1] = None
+                    polygons.clear()
+                    annotation_to_pandas(layer.data[1:]).to_csv(output_fn, index=False)
+
+            yield
+
+
+    @layer.bind_key('d')
+    def delete_the_last_shape(layer):
+        if layer.nshapes > 1:
+            msg = 'delete the last added shape'
+            layer.selected_data = set(range(layer.nshapes - 1, layer.nshapes))
+            if len(polygons) > 0:
+                _ = polygons.pop()
+            layer.remove_selected()
+        else:
+            msg = 'no shapes to delete'
+        layer.status = msg
+        print(msg)
+        annotation_to_pandas(layer.data[1:]).to_csv(output_fn, index=False)
+
+
 def create_random_lines(size, n=10, sigma=0.8):
     img = np.zeros([size, size, size])
     for i in range(n):
