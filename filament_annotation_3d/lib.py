@@ -316,11 +316,13 @@ def annotation_to_pandas(data: list) -> pd.DataFrame:
     pd.DataFrame:
         pandas DataFrame with coordinates
     """
+
     df = pd.DataFrame()
-    columns = ['t', 'z', 'y', 'x']
-    columns = columns[-data[0].shape[1]:]
-    for i, d in enumerate(data):
-        cur_df = pd.DataFrame(d, columns=columns)
-        cur_df['id'] = i
-        df = pd.concat([df, cur_df], ignore_index=True)
+    if len(data) > 0:
+        columns = ['t', 'z', 'y', 'x']
+        columns = columns[-data[0].shape[1]:]
+        for i, d in enumerate(data):
+            cur_df = pd.DataFrame(d, columns=columns)
+            cur_df['id'] = i
+            df = pd.concat([df, cur_df], ignore_index=True)
     return df
