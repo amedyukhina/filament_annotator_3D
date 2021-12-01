@@ -11,3 +11,5 @@ Annotation of filament structures in 3D based on napari viewer
 5. Repeat steps 1-4 for other filaments
 
 To delete the last added shape (polygon or filament), press "d"
+
+![demo](demo.gif)
