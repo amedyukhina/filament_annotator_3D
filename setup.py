@@ -17,7 +17,6 @@ setup(
         'pytest',
         'sklearn',
         'pandas',
-        'networkx',
         'Geometry3D',
         'jupyter',
         'jupyterlab<4.0',
