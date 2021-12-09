@@ -20,3 +20,9 @@ Annotation of filament structures in 3D based on napari viewer
 To delete the last added shape (polygon or filament), press "d"
 
 ![demo](demo.gif)
+
+## Dependencies
+
+- [napari](https://github.com/napari/napari)
+- [scikit-learn](https://github.com/scikit-learn/scikit-learn)
+- [Geometry3D](https://github.com/GouMinghao/Geometry3D)
