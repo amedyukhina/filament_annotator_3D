@@ -1,7 +1,7 @@
 import itertools
+from typing import Union
 
 import napari
-import networkx as nx
 import numpy as np
 import pandas as pd
 from Geometry3D import *
@@ -69,6 +69,7 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
                     fpt1 = polygons[0][1]
                     fpt2 = polygons[1][1]
                     mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2, maxpoints=maxpoints)
+                    # add the calculated filament
                     mt = sort_points(mt)  # make sure the filament coordinates are sorted
 
                     # remove the 2 polygons from the shapes layer
@@ -212,12 +213,15 @@ def tetragon_intersection(p1: list, p2: list):
         List of (two) coordinate of the intersection line or None if no intersection exists.
     """
     t = []
-    if len(p1[0]) > 3:
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    if p1.shape[1] > 3:
         t = list(p1[0][:-3])
-        p1 = [coord[-3:] for coord in p1]
-        p2 = [coord[-3:] for coord in p2]
+        p1 = p1[:, -3:]
+        p2 = p2[:, -3:]
     p1 = list(set([Point(*coords) for coords in p1]))
     p2 = list(set([Point(*coords) for coords in p2]))
+
     if len(p1) > 2 and len(p2) > 2:
         plane1 = ConvexPolygon(p1)
         plane2 = ConvexPolygon(p2)
@@ -229,9 +233,18 @@ def tetragon_intersection(p1: list, p2: list):
         return None
 
 
+def smooth_points(points, sig, maxpoints):
+    points = np.array(points)
+    points = ndimage.gaussian_filter(points, [sig, 0])
+    if maxpoints is not None:
+        ind = np.int_(np.linspace(0, len(points) - 1, maxpoints, endpoint=False))
+        points = np.array(points)[ind]
+    return points
+
+
 def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
                                  fpt1: np.ndarray, fpt2: np.ndarray,
-                                 maxpoints=None):
+                                 sigma=1, maxpoints=None):
     """
     Calculate intersection of two non-convex polygons represented by a list of near and far points.
 
@@ -245,9 +258,12 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         Far points of the first polygon.
     fpt2 : np.ndarray
         Far points of the second polygon.
+    sigma : float
+        Gaussian filter size in pixels to smooth the polygon points array before computing intersection.
+        Default: 1
     maxpoints : int, optional
-        If provided, all point lists will be reduced to this number of points for regularization.
-
+        If provided, the number of points will be reduced to this number before computing intersection.
+        Default: None
     Returns
     -------
     np.ndarray:
@@ -255,17 +271,11 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         where n is the number of points, d is the number of dimensions.
     """
     mt = []
-    
-    if maxpoints is not None:
-        if len(npt1) > maxpoints:
-            ind = np.int_(np.linspace(0, len(npt1)-1, maxpoints, endpoint=False))
-            npt1 = np.array(npt1)[ind]
-            fpt1 = np.array(fpt1)[ind]
-        if len(npt2) > maxpoints:
-            ind = np.int_(np.linspace(0, len(npt2)-1, maxpoints, endpoint=False))
-            npt2 = np.array(npt2)[ind]
-            fpt2 = np.array(fpt2)[ind]
-    
+    npt1 = smooth_points(npt1, sigma, maxpoints)
+    npt2 = smooth_points(npt2, sigma, maxpoints)
+    fpt1 = smooth_points(fpt1, sigma, maxpoints)
+    fpt2 = smooth_points(fpt2, sigma, maxpoints)
+
     for i in range(len(npt1) - 1):
         for j in range(len(npt2) - 1):
             p1 = [npt1[i], npt1[i + 1], fpt1[i + 1], fpt1[i]]
@@ -276,48 +286,50 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
                     mt = inter
                 else:
                     mt = np.concatenate([mt, inter], axis=0)
+
+    mt = np.array(list(set([tuple(np.round(mt[i], 1)) for i in range(len(mt))])))
     return mt
 
 
-def sort_points(points: list, n_neighbors: int = 10):
-    """
-    Sort the coordinates in the order on minimal distance path between them.
+def __find_furthest_point_indices(points):
+    nbr = NearestNeighbors(n_neighbors=len(points)).fit(points)
+    distances, indices = nbr.kneighbors(points)
+    ind = np.where(distances == np.max(distances))
+    ind2 = [ind[0][0], indices[ind][0]]
+    return ind2
 
-    Adapted from here: https://stackoverflow.com/questions/37742358/sorting-points-to-form-a-continuous-line
+
+def sort_points(points: Union[list, np.ndarray]):
+    """    Sort the coordinates in the order on minimal distance path between them.
 
     Parameters
     ----------
     points : list
         List of coordinates.
-    n_neighbors : int, optional
-        Number of neighbors for the nearest neighbor algorithm.
-        Default: 10.
 
     Returns
     -------
     list:
         Sorted list of coordinates.
     """
-    clf = NearestNeighbors(n_neighbors=n_neighbors).fit(points)
-    G = clf.kneighbors_graph()
-    T = nx.from_scipy_sparse_matrix(G)
-    points = np.array(points)
-
-    paths = [list(nx.dfs_preorder_nodes(T, i)) for i in range(len(points))]
-    mindist = np.inf
-    minidx = 0
-
-    for i in range(len(points)):
-        p = paths[i]  # order of nodes
-        ordered = points[p]  # ordered nodes
-        # find cost of that order by the sum of euclidean distances between points (i) and (i+1)
-        cost = (((ordered[:-1] - ordered[1:]) ** 2).sum(1)).sum()
-        if cost < mindist:
-            mindist = cost
-            minidx = i
-
-    order = paths[minidx]
-    return points[order]
+    sorted1 = []
+    sorted2 = []
+    while len(points) >= 2:
+        ind = __find_furthest_point_indices(points)
+        selected = points[ind]
+        if len(sorted1) == 0 or np.linalg.norm(selected[0] - sorted1[-1]) < np.linalg.norm(selected[0] - sorted2[-1]):
+            sorted1.append(selected[0])
+            sorted2.append(selected[1])
+        else:
+            sorted1.append(selected[1])
+            sorted2.append(selected[0])
+        points = points[~np.isin(np.arange(len(points)), ind)]
+    if len(points) > 0:
+        sorted1 = sorted1 + [points[0]]
+    sorted2.reverse()
+    sorted1 = sorted1 + sorted2
+    points = np.array(sorted1)
+    return points
 
 
 def annotation_to_pandas(data: list) -> pd.DataFrame:
