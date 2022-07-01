@@ -7,7 +7,7 @@ from .utils.geom import sort_points, compute_polygon_intersection
 from .utils.io import annotation_to_pandas
 
 
-def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
+def annotate_filaments(annotation_layer, output_fn, point_size=1):
     """
 
     Parameters
@@ -16,10 +16,9 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
         napari shapes layer to add annotations
     output_fn : str
         csv file to save filament coordinates
-    maxpoints : int, optional
-        Maximum points in the annotated filament.
-        Used for regularization.
-        Default: 10
+    point_size : scalar
+        Point and line size for display.
+        Default is 1.
     Returns
     -------
 
@@ -29,29 +28,38 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
     polygons = []
 
     @annotation_layer.mouse_drag_callbacks.append
-    def draw_polygons(layer, event):
+    def draw_polygon_shape(layer, event):
+        """
+        Draw two polygons in different projections and calculate their intersection
+        """
+        yield
+        if 'Control' in event.modifiers:  # draw a polygon if "Control" is pressed
+            # get the near a far points of the mouse position
+            near_point, far_point = layer.get_ray_intersections(
+                event.position,
+                event.view_direction,
+                event.dims_displayed
+            )
+            # append to the array of near and far points
+            if (near_point is not None) and (far_point is not None):
+                near_points.append(near_point)
+                far_points.append(far_point)
+
+            # draw a polygon from the array of near and far points if there are > 3 of them
+
+            if len(near_points) > 0 and len(far_points) > 0:
+                layer = draw_polygon(layer, near_points, far_points, point_size=point_size)
+
+        yield
+
+    @annotation_layer.mouse_drag_callbacks.append
+    def calculate_intersection(layer, event):
         """
         Draw two polygons in different projections and calculate their intersection
         """
         yield
         while event.type == 'mouse_move':
-            if 'Control' in event.modifiers:  # draw a polygon if "Control" is pressed
-                # get the near a far points of the mouse position
-                near_point, far_point = layer.get_ray_intersections(
-                    event.position,
-                    event.view_direction,
-                    event.dims_displayed
-                )
-                # append to the array of near and far points
-                if (near_point is not None) and (far_point is not None):
-                    near_points.append(near_point)
-                    far_points.append(far_point)
-
-                # draw a polygon from the array of near and far points if there are > 3 of them
-                if len(near_points) > 3:
-                    layer = draw_polygon(layer, near_points, far_points)
-
-            else:  # normal rotation when "Control" is not pressed
+            if 'Control' not in event.modifiers:  # draw a polygon if "Control" is pressed
                 # add a polygon if there are some point saved
                 if len(near_points) > 0:
                     polygons.append([near_points.copy(), far_points.copy()])
@@ -66,7 +74,7 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
                     npt2 = polygons[1][0]
                     fpt1 = polygons[0][1]
                     fpt2 = polygons[1][1]
-                    mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2, maxpoints=maxpoints)
+                    mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2)
                     # add the calculated filament
                     mt = sort_points(mt)  # make sure the filament coordinates are sorted
 
@@ -75,7 +83,7 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
                     layer.remove_selected()
 
                     # add the calculated filament
-                    layer.add(mt, shape_type='path', edge_color='green', edge_width=1)
+                    layer.add(mt, shape_type='path', edge_color='green', edge_width=point_size)
 
                     # clear the polygons array
                     polygons[0] = None
@@ -87,8 +95,8 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
 
             yield
 
-    @annotation_layer.bind_key('d')
-    def delete_the_last_shape(layer):
+    @annotation_layer.bind_key('p')
+    def delete_the_last_shape(layer, show_message=True):
         """
         Remove the last added shape (polygon or filament)
 
@@ -97,13 +105,30 @@ def annotate_filaments(annotation_layer, output_fn, maxpoints: int = 10):
             msg = 'delete the last added shape'
             layer.selected_data = set(range(layer.nshapes - 1, layer.nshapes))
             if len(polygons) > 0:
-                _ = polygons.pop()
+                polygons.pop()
             layer.remove_selected()
         else:
             msg = 'no shapes to delete'
-        layer.status = msg
-        print(msg)
+        if show_message:
+            layer.status = msg
+            print(msg)
         annotation_to_pandas(layer.data[1:]).to_csv(output_fn, index=False)
+        near_points.clear()
+        far_points.clear()
+
+    @annotation_layer.bind_key('d')
+    def delete_the_last_point(layer):
+        """
+        Remove the last added point
+
+        """
+        if len(near_points) > 0 and len(far_points) > 0:
+            near_points.pop()
+            far_points.pop()
+            if len(near_points) > 0:
+                layer = draw_polygon(layer, near_points.copy(), far_points.copy())
+            else:
+                delete_the_last_shape(layer, show_message=False)
 
 
 def add_annotation_layer(viewer: napari.Viewer):
@@ -134,7 +159,7 @@ def add_annotation_layer(viewer: napari.Viewer):
     return layer
 
 
-def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red'):
+def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red', point_size=1):
     """
     Draw a polygon between provided near and far points.
 
@@ -148,11 +173,17 @@ def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red')
         List of polygon coordinates further from the viewer.
     color : str, optional
         Color of the polygon
+    point_size : scalar
+        Point and line size for display.
+        Default is 1.
 
     Returns
     -------
     Updated shapes layer
     """
+    if len(near_points) < 2:
+        near_points.append(np.array(near_points[0]) + 1)
+        far_points.append(np.array(far_points[0]) + 1)
     far_points_reverse = far_points.copy()
     far_points_reverse.reverse()
     polygon = np.array(near_points + far_points_reverse)
@@ -162,7 +193,7 @@ def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red')
     layer.add(
         polygon,
         shape_type='polygon',
-        edge_width=1,
+        edge_width=point_size,
         edge_color=color
     )
     return layer

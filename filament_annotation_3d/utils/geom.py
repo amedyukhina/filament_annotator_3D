@@ -2,7 +2,6 @@ from typing import Union
 
 import numpy as np
 from Geometry3D import *
-from scipy import ndimage
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -41,18 +40,8 @@ def tetragon_intersection(p1: list, p2: list):
         return None
 
 
-def smooth_points(points, sig, maxpoints):
-    points = np.array(points)
-    points = ndimage.gaussian_filter(points, [sig, 0])
-    if maxpoints is not None:
-        ind = np.int_(np.linspace(0, len(points) - 1, maxpoints, endpoint=False))
-        points = np.array(points)[ind]
-    return points
-
-
 def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
-                                 fpt1: np.ndarray, fpt2: np.ndarray,
-                                 sigma=1, maxpoints=None):
+                                 fpt1: np.ndarray, fpt2: np.ndarray):
     """
     Calculate intersection of two non-convex polygons represented by a list of near and far points.
 
@@ -66,12 +55,6 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         Far points of the first polygon.
     fpt2 : np.ndarray
         Far points of the second polygon.
-    sigma : float
-        Gaussian filter size in pixels to smooth the polygon points array before computing intersection.
-        Default: 1
-    maxpoints : int, optional
-        If provided, the number of points will be reduced to this number before computing intersection.
-        Default: None
     Returns
     -------
     np.ndarray:
@@ -79,10 +62,6 @@ def compute_polygon_intersection(npt1: np.ndarray, npt2: np.ndarray,
         where n is the number of points, d is the number of dimensions.
     """
     mt = []
-    npt1 = smooth_points(npt1, sigma, maxpoints)
-    npt2 = smooth_points(npt2, sigma, maxpoints)
-    fpt1 = smooth_points(fpt1, sigma, maxpoints)
-    fpt2 = smooth_points(fpt2, sigma, maxpoints)
 
     for i in range(len(npt1) - 1):
         for j in range(len(npt2) - 1):
