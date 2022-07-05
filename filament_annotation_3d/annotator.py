@@ -2,13 +2,15 @@ import itertools
 
 import napari
 import numpy as np
+from scipy import ndimage
 
 from .utils.geom import compute_polygon_intersection
 from .utils.io import annotation_to_pandas
-from .utils.postproc import sort_points
+from .utils.postproc import sort_points, snap_to_brightest
 
 
-def annotate_filaments(annotation_layer, output_fn, point_size=1):
+def annotate_filaments(annotation_layer, output_fn, point_size=1,
+                       image_layer=None, sigma=2., neighborhood_radius=5, decay_sigma=5.):
     """
 
     Parameters
@@ -20,6 +22,21 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1):
     point_size : scalar
         Point and line size for display.
         Default is 1.
+    image_layer : napari layer, optional
+        napari image layer to use for snapping annotation points to the brightest neighborhood point.
+        Default is None.
+    sigma : scalar or sequence, optional
+        Gaussian sigma (pixels) to smooth the image for identifying the brightest neighborhood point.
+        Can be provided as a list of different values for each dimension.
+        Default is 2.
+    neighborhood_radius : int or sequence, optional
+        Radius of the neighborhood (in pixels) to consider for identifying the brightest points.
+        Can be provided as a list of values for different dimensions.
+        Default is 5.
+    decay_sigma : scalar or sequence, optional
+        Sigma of a Gaussian used to scale image intensities centered on the original annotated point.
+        This is done to give preference to the original point, if there are other points with the same intensity.
+        Default is 5.
     Returns
     -------
 
@@ -27,6 +44,15 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1):
     near_points = []
     far_points = []
     polygons = []
+    img = None
+    if image_layer is not None:
+        img = image_layer.data.copy()
+        sigma = np.ravel(sigma)
+        if len(sigma) < 3:
+            sigma = [sigma[0]] * 3
+        if len(img.shape) > 3:
+            sigma = [0] * (len(img.shape) - len(sigma)) + sigma
+        img = ndimage.gaussian_filter(img, sigma=sigma)
 
     @annotation_layer.mouse_drag_callbacks.append
     def draw_polygon_shape(layer, event):
@@ -77,6 +103,14 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1):
                     fpt2 = polygons[1][1]
                     mt = compute_polygon_intersection(npt1, npt2, fpt1, fpt2)
                     # add the calculated filament
+                    if image_layer is not None:
+                        mt = np.array(mt)
+                        if len(img.shape) > 3:
+                            mt[:, 1:] = snap_to_brightest(mt[:, 1:], img=img[mt[0][0]],
+                                                          rad=neighborhood_radius, decay_sigma=decay_sigma)
+                        else:
+                            mt = snap_to_brightest(mt, img=img, rad=neighborhood_radius, decay_sigma=decay_sigma)
+
                     mt = sort_points(mt)  # make sure the filament coordinates are sorted
 
                     # remove the 2 polygons from the shapes layer
