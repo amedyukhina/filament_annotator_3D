@@ -3,8 +3,9 @@ import itertools
 import napari
 import numpy as np
 
-from .utils.geom import sort_points, compute_polygon_intersection
+from .utils.geom import compute_polygon_intersection
 from .utils.io import annotation_to_pandas
+from .utils.postproc import sort_points
 
 
 def annotate_filaments(annotation_layer, output_fn, point_size=1):
@@ -48,7 +49,7 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1):
             # draw a polygon from the array of near and far points if there are > 3 of them
 
             if len(near_points) > 0 and len(far_points) > 0:
-                layer = draw_polygon(layer, near_points, far_points, point_size=point_size)
+                draw_polygon(layer, near_points, far_points, point_size=point_size)
 
         yield
 
@@ -126,7 +127,7 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1):
             near_points.pop()
             far_points.pop()
             if len(near_points) > 0:
-                layer = draw_polygon(layer, near_points.copy(), far_points.copy())
+                draw_polygon(layer, near_points.copy(), far_points.copy())
             else:
                 delete_the_last_shape(layer, show_message=False)
 
