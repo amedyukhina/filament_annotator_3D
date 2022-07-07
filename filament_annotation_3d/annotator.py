@@ -75,7 +75,7 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1,
             # draw a polygon from the array of near and far points if there are > 3 of them
 
             if len(near_points) > 0 and len(far_points) > 0:
-                draw_polygon(layer, near_points, far_points, point_size=point_size)
+                draw_polygon(layer, near_points.copy(), far_points.copy(), point_size=point_size)
 
         yield
 
@@ -118,7 +118,7 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1,
                     layer.remove_selected()
 
                     # add the calculated filament
-                    layer.add(mt, shape_type='path', edge_color='green', edge_width=point_size)
+                    layer.add(mt, shape_type='path', edge_color='green', edge_width=point_size * layer.scale[0])
 
                     # clear the polygons array
                     polygons[0] = None
@@ -178,7 +178,7 @@ def add_annotation_layer(viewer: napari.Viewer):
     -------
     napari shapes layer with a bounding box shape
     """
-    shape = viewer.layers[0].data.shape
+    shape = viewer.layers[0].data.shape #* viewer.layers[0].scale
 
     # add a bounding box to set the coordinates range
     bbox = list(itertools.product(*[np.arange(2)
@@ -190,7 +190,11 @@ def add_annotation_layer(viewer: napari.Viewer):
     layer = viewer.add_shapes(bbox,
                               name='annotations',
                               shape_type='path',
-                              edge_width=0)
+                              edge_width=0,
+                              scale=viewer.layers[0].scale
+                              )
+    # layer.selected_data = set(range(layer.nshapes - 1, layer.nshapes))
+    # layer.remove_selected()
     return layer
 
 
@@ -217,8 +221,8 @@ def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red',
     Updated shapes layer
     """
     if len(near_points) < 2:
-        near_points.append(np.array(near_points[0]) + 1)
-        far_points.append(np.array(far_points[0]) + 1)
+        near_points.append(np.array(near_points[0]) + point_size)
+        far_points.append(np.array(far_points[0]) + point_size)
     far_points_reverse = far_points.copy()
     far_points_reverse.reverse()
     polygon = np.array(near_points + far_points_reverse)
@@ -228,7 +232,7 @@ def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red',
     layer.add(
         polygon,
         shape_type='polygon',
-        edge_width=point_size,
+        edge_width=point_size * layer.scale[0],
         edge_color=color
     )
     return layer
