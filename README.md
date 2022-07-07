@@ -17,7 +17,9 @@ Annotation of filament structures in 3D based on napari viewer
 4. Rotate the image again: this will calculate the filament position from the intersection of the two polygons
 5. Repeat steps 1-4 for other filaments
 
-To delete the last added shape (polygon or filament), press "d"
+To delete the last added point, press "d"
+
+To delete the last added shape (polygon or filament), press "p"
 
 ![demo](img/demo.gif)
 
