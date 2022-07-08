@@ -58,7 +58,7 @@ To delete the last added shape (polygon or filament), press "p"
 The annotation results will be automatically saved in the csv file, 
 provided when running `annotate_filaments`.
 
-## Advanced documentation
+## Advanced parameters
 
 ### Providing scale for anisotropic images
 
