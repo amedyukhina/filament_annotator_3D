@@ -118,7 +118,7 @@ def annotate_filaments(annotation_layer, output_fn, point_size=1,
                     layer.remove_selected()
 
                     # add the calculated filament
-                    layer.add(mt, shape_type='path', edge_color='green', edge_width=point_size * layer.scale[0])
+                    layer.add(mt, shape_type='path', edge_color='green', edge_width=point_size)
 
                     # clear the polygons array
                     polygons[0] = None
@@ -178,7 +178,7 @@ def add_annotation_layer(viewer: napari.Viewer):
     -------
     napari shapes layer with a bounding box shape
     """
-    shape = viewer.layers[0].data.shape #* viewer.layers[0].scale
+    shape = viewer.layers[0].data.shape
 
     # add a bounding box to set the coordinates range
     bbox = list(itertools.product(*[np.arange(2)
@@ -193,8 +193,6 @@ def add_annotation_layer(viewer: napari.Viewer):
                               edge_width=0,
                               scale=viewer.layers[0].scale
                               )
-    # layer.selected_data = set(range(layer.nshapes - 1, layer.nshapes))
-    # layer.remove_selected()
     return layer
 
 
@@ -232,7 +230,7 @@ def draw_polygon(layer, near_points: list, far_points: list, color: str = 'red',
     layer.add(
         polygon,
         shape_type='polygon',
-        edge_width=point_size * layer.scale[0],
+        edge_width=point_size,
         edge_color=color
     )
     return layer
