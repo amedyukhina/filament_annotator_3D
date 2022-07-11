@@ -128,4 +128,5 @@ annotate_filaments(an_layer, 'annotations.csv',
 - [napari](https://github.com/napari/napari)
 - [scikit-image](https://scikit-image.org/)
 - [scikit-learn](https://github.com/scikit-learn/scikit-learn)
+- [NetworkX](https://networkx.org/documentation/stable/index.html)
 - [Geometry3D](https://github.com/GouMinghao/Geometry3D)

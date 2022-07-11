@@ -18,6 +18,7 @@ setup(
         'ddt',
         'pytest',
         'sklearn',
+        'networkx',
         'pandas',
         'Geometry3D',
         'jupyter',
