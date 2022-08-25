@@ -1,6 +1,12 @@
+This is an archived version of the 3D filament annotator. 
+
+For an up-to-date version, see [here](https://github.com/amedyukhina/napari-filament-annotator)
+
+
 [![Python 3.9](https://img.shields.io/badge/python-3.9-gr.svg)](https://www.python.org/downloads/release/python-390/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-gr.svg)](https://opensource.org/licenses/Apache-2.0)
 [![DOI](https://zenodo.org/badge/433625124.svg)](https://zenodo.org/badge/latestdoi/433625124)
+
 
 # 3D filament annotator
 
